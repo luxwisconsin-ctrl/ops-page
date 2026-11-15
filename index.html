@@ -164,7 +164,7 @@ const EVID = { verified: ['Verified', 'ok'], provider_confirmed: ['Confirmed by 
 const chip = (pair) => `<span class="chip ${pair?.[1] || ''}">${e(pair?.[0] || '')}</span>`;
 
 function nav() {
-  const tabs = [['home', 'Inbox']]; if (ME.role === 'owner') tabs.push(['dash', 'Dashboard'], ['new', 'New event']);
+  const tabs = [['home', 'Inbox'], ['camp', 'Campaigns']]; if (ME.role === 'owner') tabs.push(['dash', 'Dashboard'], ['new', 'New project']);
   $('#nav').innerHTML = tabs.map(([k, t]) => `<button data-v="${k}" aria-current="${VIEW === k}">${t}</button>`).join('');
   $('#nav').onclick = (ev) => { const v = ev.target.dataset?.v; if (v) { VIEW = v; route(); } };
 }
@@ -172,6 +172,7 @@ async function route() {
   try {
     if (VIEW === 'dash') return await dash();
     if (VIEW === 'new') return newEvent();
+    if (VIEW === 'camp') return await campaigns();
     if (String(VIEW).startsWith('event:')) return await eventView(+VIEW.split(':')[1], +VIEW.split(':')[2] || undefined);
     await home();
   } catch (x) { $('#main').innerHTML = `<p class="err">${e(x.message === 'unauthorized' ? 'This link is not valid. Ask Lux Management for a new one.' : x.message)}</p>`; }
@@ -207,10 +208,17 @@ async function home() {
   $('#main').innerHTML = `
     ${review.length ? `<h2>Waiting on you</h2>` + review.map((x) => `<div class="card banner"><b>${e(x.title)}</b><p class="mute">${day(x.event_date)} · ${VENUES[x.venue_id]} · version ${x.version}</p><button class="btn gold" data-open="${x.id}">Review package</button></div>`).join('') : ''}
     <h2>Tasks</h2>${d.tasks.map(taskCard).join('') || '<p class="mute">Nothing open.</p>'}
+    <details><summary>Assign a task</summary><div>
+      ${ME.role === 'owner' ? `<label for="tv">Venue</label><select id="tv"><option value="654">Lux Wisconsin</option><option value="655">Lux Kentucky</option></select>` : ''}
+      <label for="tt">What needs doing</label><input id="tt">
+      <label for="tdue">Due</label><input id="tdue" type="datetime-local">
+      <label for="tev">Proof needed when it is done (photo link, receipt, count)</label><input id="tev">
+      <p><button class="btn primary small" id="tadd">Assign</button></p></div></details>
     <h2>Leads to follow up</h2>${d.leads.map(leadCard).join('') || '<p class="mute">No open leads.</p>'}
     <h2>Events</h2>${d.events.map((x) => `<div class="card row"><div style="flex:1"><b>${e(x.title)}</b><br><span class="mute">${day(x.event_date)} · ${VENUES[x.venue_id]}</span></div>${chip(STATUS[x.status])}${x.version ? `<button class="btn small" data-open="${x.id}">Open</button>` : ''}</div>`).join('') || '<p class="mute">No events yet.</p>'}
     <h2>Messages</h2>${d.messages.map((x) => `<div class="msg"><span class="mute">${when(x.created_at)} · ${e(x.kind.replace(/_/g, ' '))}</span><br>${e(x.body)}</div>`).join('') || '<p class="mute">No messages.</p>'}`;
   wire($('#main'));
+  $('#tadd').onclick = (x) => act(x.target, 'task_create', { venue_id: ME.role === 'owner' ? +$('#tv').value : ME.venue_id, title: $('#tt').value, due: $('#tdue').value ? new Date($('#tdue').value).toISOString() : null, evidence: $('#tev').value });
 }
 
 async function eventView(id, version) {
@@ -250,7 +258,7 @@ async function eventView(id, version) {
     ${p.checklist.map((c) => `<tr><td>${e(c.task)} ${c.priority === 'high' ? '<span class="chip bad">high</span>' : ''}</td><td>${e(c.role)}</td><td>${when(c.due, ev.venue_id)}</td><td>${e(c.completion)}</td><td>${e(c.evidence)}</td></tr>`).join('')}</tbody></table></div>
 
     <h2>Independent AI review</h2>
-    ${last ? `<p class="mute">Reviewed by ${e(last.reviewer)} · ${last.verdict === 'pass' ? 'no blocking issues' : open.length + ' issue(s) raised'}</p>` + (last.findings.length ? last.findings.map((f) => `<div class="card"><span class="chip ${f.severity === 'high' ? 'bad' : f.severity === 'medium' ? 'warn' : ''}">${e(f.severity)}</span> <b>${e(f.where)}</b><p>${e(f.issue)}</p><p class="mute">Suggested fix: ${e(f.fix)}</p></div>`).join('') : '') : '<p class="mute">Not reviewed yet.</p>'}
+    ${last ? `<p class="mute">Reviewed by ${e(last.reviewer)} · ${last.verdict === 'pass' ? 'no blocking issues' : open.length + ' issue(s) raised'}</p>` + (last.findings.length ? last.findings.map((f) => `<div class="card"><span class="chip ${f.blocking === false ? '' : f.severity === 'high' ? 'bad' : 'warn'}">${f.blocking === false ? 'suggestion' : e(f.severity)}</span> <b>${e(f.where)}</b><p>${e(f.issue)}</p><p class="mute">Suggested fix: ${e(f.fix)}</p></div>`).join('') : '') : '<p class="mute">Not reviewed yet.</p>'}
 
     <h2>History</h2>
     ${d.feedback.map((f) => `<div class="msg"><span class="mute">${e(f.by)} asked for changes on version ${f.version}, ${when(f.at, ev.venue_id)}</span><br>${e(f.body)}</div>`).join('')}
@@ -269,25 +277,89 @@ async function eventView(id, version) {
     dlg.innerHTML = `<h2 style="margin-top:0">Approve version ${d.version}</h2>
       <p>You are approving the decisions, flyers, plan and posting schedule exactly as shown. Any change after this needs a new approval.</p>
       <p><b>Post on:</b></p>${plats.map((x) => `<label style="color:var(--text)"><input type="checkbox" value="${e(x)}" checked style="width:auto"> ${e(x)}</label>`).join('')}
-      ${ME.role === 'owner' ? `<label for="bud">Paid ad budget you authorize for this event, total dollars (0 for none)</label><input id="bud" type="number" min="0" step="1" value="0">` : `<p class="mute">Paid ads are not part of this approval. Only the owner can approve ad money.</p>`}
+      <p class="mute">Paid ads are not part of this approval. They run as campaigns inside the monthly budget (Campaigns tab).</p>
       <p class="row" style="margin-top:14px"><button class="btn gold" id="yes">Approve</button><button class="btn" id="no">Cancel</button></p>`;
     dlg.showModal(); $('#no').onclick = () => dlg.close();
-    $('#yes').onclick = (x) => act(x.target, 'approve', { event_id: id, version: d.version, sha256: d.sha256, budget: +($('#bud')?.value || 0), platforms: [...dlg.querySelectorAll('input[type=checkbox]:checked')].map((c) => c.value), actions: ['organic_posts', 'manager_tasks'] }, async () => { dlg.close(); await route(); });
+    $('#yes').onclick = (x) => act(x.target, 'approve', { event_id: id, version: d.version, sha256: d.sha256, budget: 0, platforms: [...dlg.querySelectorAll('input[type=checkbox]:checked')].map((c) => c.value), actions: ['organic_posts', 'manager_tasks'] }, async () => { dlg.close(); await route(); });
   };
+}
+
+// ---------- campaigns and the monthly marketing budget ----------
+const money = (n) => '$' + Number(n).toLocaleString('en-US', { maximumFractionDigits: 2 });
+const BUCKET = { 654: 'Wisconsin', 655: 'Kentucky', reserve: 'Shared reserve' };
+const CSTAT = { reviewing: ['With the reviewer', ''], needs_fix: ['Needs changes', 'warn'], rejected: ['Rejected', 'bad'], reviewed: ['Passed review', 'ok'], launched: ['Running', 'ok'], paused: ['Paused', 'warn'], completed: ['Finished', ''] };
+const PSTAT = { eligible: ['Allowed', 'ok'], restricted: ['Allowed with conditions', 'warn'], prohibited: ['Not allowed', 'bad'], unverified: ['Not checked yet', ''] };
+function campaignCard(c) {
+  const ran = ['launched', 'paused', 'completed'].includes(c.status), rv = c.review;
+  return `<div class="card"><div class="row"><b>${e(c.name)}</b>${chip(CSTAT[c.status])}<span class="chip">${VENUES[c.venue_id]} · ${e(c.platform)}</span></div>
+    <p class="mute">${e(c.start_date)} to ${e(c.end_date)} · estimate ${money(c.est_cost)}${c.reserved ? ' · ' + money(c.reserved) + ' set aside' : ''} · goal: ${e(c.expected_outcome)}</p>
+    ${c.pause_reason ? `<p>Paused because ${e(c.pause_reason)}.</p>` : ''}
+    ${ran ? `<p>Spent ${money(c.actual_spend)} ${c.spend_reported_through ? '(reported through ' + e(c.spend_reported_through) + ')' : '(nothing reported yet)'} · ${c.outcomes} ${e(c.outcome_metric.replace(/_/g, ' '))} · ${c.cost_per_outcome != null ? money(c.cost_per_outcome) + ' each' : 'no cost per result yet'}, target ${money(c.target_cost_per_outcome)}</p>` : ''}
+    ${rv ? `<details><summary>Independent review: ${e(rv.verdict)}</summary><div><p class="mute">${e(rv.reviewer || '')}</p>${Object.entries(rv.checks || {}).map(([name, x]) => `<p>${chip(x.ok ? ['ok', 'ok'] : ['failed', 'bad'])} <b>${e(name)}</b> ${e(x.note || '')}</p>`).join('')}${rv.alternative ? `<p><b>Reviewer's version that would be allowed:</b> ${e(rv.alternative.creative || '')}</p><p class="mute">${e(rv.alternative.targeting || '')} ${e(rv.alternative.note || '')}</p>` : ''}${(rv.findings || []).map((f) => `<p class="mute">${f.blocking === false ? 'Suggestion' : 'Must fix'} · ${e(f.where)}: ${e(f.issue)}</p>`).join('')}</div></details>` : ''}
+    ${c.status === 'reviewed' ? `<p><button class="btn gold small" data-launch="${c.id}">Launch</button></p>` : ''}
+    ${['launched', 'paused'].includes(c.status) ? `<div class="row"><input id="sp${c.id}" type="number" min="0" step="0.01" placeholder="Total spent so far (final total to finish)" aria-label="Total spent so far" style="flex:1;min-width:140px"><input id="oc${c.id}" type="number" min="0" step="1" placeholder="Results so far" aria-label="Results so far" style="flex:1;min-width:120px"><button class="btn small" data-rec="${c.id}">Save numbers</button><button class="btn small" data-done="${c.id}">Finish</button></div>` : ''}
+  </div>`;
+}
+async function campaigns() {
+  const d = await api('budget_view'); nav();
+  const owner = d.me.role === 'owner', proposed = d.buckets.some((b) => b.status !== 'confirmed');
+  const plats = d.platforms.filter((x) => ['eligible', 'restricted'].includes(x.status));
+  const field = (id, label, extra = '') => `<label for="${id}">${label}</label><input id="${id}" ${extra}>`;
+  $('#main').innerHTML = `
+    <h1>Marketing budget</h1>
+    <p class="mute">${new Date(d.month + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}. Unused money does not carry over to next month.</p>
+    ${proposed ? `<div class="card banner"><b>The monthly budget is proposed, not confirmed.</b> Nothing can launch until the owner confirms it once.${owner ? `<p><button class="btn gold small" data-budget="confirm">Confirm these amounts</button></p>` : ''}</div>` : owner ? `<p><button class="btn small" data-budget="freeze">Freeze all new launches</button></p>` : ''}
+    ${d.buckets.map((b) => `<div class="card"><div class="row"><b>${BUCKET[b.bucket]}</b><span class="chip ${b.remaining <= 0 ? 'bad' : b.committed >= b.allowance * 0.8 ? 'warn' : 'ok'}">${money(b.remaining)} left</span></div>
+      <p class="mute">Allowance ${money(b.allowance)} · set aside for campaigns ${money(b.committed)} · reported spent ${money(b.actual)}</p></div>`).join('')}
+    <p class="mute">This ceiling is enforced here: launches are blocked and campaigns are paused when the money runs out. Ad platforms bill on their own schedule and can go past a budget, so this is not a guaranteed hard stop. Spend is only as fresh as the last report.</p>
+    ${d.by_venue.length ? `<div class="tablewrap"><table><thead><tr><th>Venue</th><th>Spent</th><th>Results</th><th>Cost per result</th></tr></thead><tbody>${d.by_venue.map((x) => `<tr><td>${VENUES[x.venue_id]}</td><td>${money(x.spend)}</td><td>${x.outcomes}</td><td>${x.cost_per_outcome != null ? money(x.cost_per_outcome) : 'n/a'}</td></tr>`).join('')}</tbody></table></div>` : ''}
+    <h2>Campaigns</h2>${d.campaigns.map(campaignCard).join('') || '<p class="mute">No campaigns yet.</p>'}
+    <h2>New campaign</h2>
+    ${plats.length ? `<p class="mute">A second AI checks purpose, quality, targeting, cost, budget, platform rules and the expected result. If it passes and the money is there, you launch it yourself.</p>
+      ${owner ? `<label for="cv">Venue</label><select id="cv"><option value="654">Lux Wisconsin</option><option value="655">Lux Kentucky</option></select>` : ''}
+      ${field('cn', 'Name')}
+      <label for="cp">Platform</label><select id="cp">${plats.map((x) => `<option>${e(x.platform)}</option>`).join('')}</select>
+      ${field('cpu', 'What is this campaign for?')}
+      ${field('ct', 'Who should see it (area, ages, interests)')}
+      <label for="cc">Ad text exactly as it will run, and the page it links to</label><textarea id="cc"></textarea>
+      ${field('ce', 'Expected result, in numbers (for example: 15 sign-ups)')}
+      <label for="cm">What counts as a result</label><select id="cm"><option value="qualified_leads">Qualified leads or sign-ups</option><option value="attendance">People attending</option><option value="auditions">Auditions</option><option value="reservations">Reservations</option><option value="sales">Sales</option></select>
+      ${field('ctc', 'Target cost per result, dollars', 'type="number" min="0.01" step="0.01"')}
+      ${field('cec', 'Estimated total cost, dollars', 'type="number" min="1" step="1"')}
+      ${field('cs', 'Start date', 'type="date"')}${field('cen', 'End date (same month)', 'type="date"')}
+      ${field('crr', 'Money requested from the shared reserve, if any', 'type="number" min="0" step="1" value="0"')}
+      ${field('crn', 'Why the reserve should fund it (needed if you ask for reserve money)')}
+      <p><button class="btn primary" id="csave">Send for review</button></p>` : `<div class="card">No ad platform is cleared for this business yet, so no campaign can be created.</div>`}
+    <details><summary>Ad platforms and their rules</summary><div>${d.platforms.map((x) => `<div class="msg"><b>${e(x.platform)}</b> ${chip(PSTAT[x.status])}<br>${e(x.conditions || '')}<br><span class="mute">${e(x.overspend_note || '')}${x.verified_on ? ' Checked ' + e(x.verified_on) + '.' : ''}</span></div>`).join('')}</div></details>`;
+  const call = async (btn, fn, args) => { btn.disabled = true; try { const r = await api(fn, args); if (r && r.ok === false) alert(r.message); else if (r && r.paused_because) alert('Saved. The campaign was paused because ' + r.paused_because + '.'); await route(); } catch (x) { alert(x.message); btn.disabled = false; } };
+  const num = (id) => { const v = $(id).value; return v === '' ? undefined : +v; };
+  $('#main').querySelectorAll('[data-budget]').forEach((b) => b.onclick = () => call(b, 'budget_decide', { what: b.dataset.budget }));
+  const byId = Object.fromEntries(d.campaigns.map((c) => [c.id, c]));
+  $('#main').querySelectorAll('[data-launch]').forEach((b) => b.onclick = () => {
+    const c = byId[b.dataset.launch], real = c.platform !== 'mock';
+    if (real && !confirm(`Before you launch: in ${c.platform}, set this campaign's TOTAL budget to ${money(c.est_cost)} and its end date to ${c.end_date}. That platform setting is what actually stops the spending; this page can only track it. Press OK only if you will do that.`)) return;
+    call(b, 'campaign_launch', { campaign_id: c.id, cap_ack: real ? 'true' : undefined });
+  });
+  $('#main').querySelectorAll('[data-rec]').forEach((b) => b.onclick = () => call(b, 'campaign_record', { campaign_id: +b.dataset.rec, spend: num('#sp' + b.dataset.rec), outcomes: num('#oc' + b.dataset.rec) }));
+  $('#main').querySelectorAll('[data-done]').forEach((b) => b.onclick = () => call(b, 'campaign_record', { campaign_id: +b.dataset.done, action: 'complete', spend: num('#sp' + b.dataset.done), outcomes: num('#oc' + b.dataset.done) }));
+  if ($('#csave')) $('#csave').onclick = (x) => call(x.target, 'campaign_save', { venue_id: owner ? +$('#cv').value : d.me.venue_id, name: $('#cn').value, platform: $('#cp').value, purpose: $('#cpu').value, targeting: $('#ct').value, creative: $('#cc').value,
+    expected_outcome: $('#ce').value, outcome_metric: $('#cm').value, target_cost_per_outcome: num('#ctc'), est_cost: num('#cec'), start_date: $('#cs').value || null, end_date: $('#cen').value || null, reserve_request: num('#crr') || 0, reserve_reason: $('#crn').value });
 }
 
 function newEvent() {
   nav();
-  $('#main').innerHTML = `<h1>New event idea</h1><p class="mute">Type it the way you would say it. The AI builds the full package, a second AI checks it, then it goes to the venue manager for review.</p>
+  $('#main').innerHTML = `<h1>New project idea</h1><p class="mute">Type it the way you would say it. The AI builds the full package, a second AI checks it, then it goes to the venue manager for review.</p>
     <label for="nv">Venue</label><select id="nv"><option value="654">Lux Wisconsin</option><option value="655">Lux Kentucky</option></select>
-    <label for="nd">Event date</label><input id="nd" type="date">
+    <label for="nk">Type of project</label><select id="nk"><option value="event">Event</option><option value="campaign">Marketing campaign</option><option value="recruitment">Hiring</option><option value="promotion">Venue promotion</option><option value="operations">Operations project</option></select>
+    <label for="nd">Date (event day, launch day or deadline)</label><input id="nd" type="date">
     <label for="nt">The idea</label><textarea id="nt" style="min-height:140px" placeholder="Wednesday November 25, Jello Wrestling. Participants arrive at 9, matches start at 10, first and second place cash prizes, $15 or $20 cover."></textarea>
     <p><button class="btn primary" id="go">Build the package</button></p>`;
-  $('#go').onclick = (x) => act(x.target, 'submit_event', { venue_id: +$('#nv').value, event_date: $('#nd').value || null, text: $('#nt').value }, async () => { VIEW = 'home'; await route(); });
+  $('#go').onclick = (x) => act(x.target, 'submit_event', { venue_id: +$('#nv').value, kind: $('#nk').value, event_date: $('#nd').value || null, text: $('#nt').value }, async () => { VIEW = 'home'; await route(); });
 }
 
 async function dash() {
   const d = await api('dashboard', { venue_id: VENUE ? +VENUE : null }); nav();
+  const bv = await api('budget_view'), sum = (k) => bv.buckets.filter((b) => !VENUE || b.bucket === VENUE || b.bucket === 'reserve').reduce((t, b) => t + Number(b[k]), 0);
   const now = new Date(), E = d.events, P = d.publishing, L = d.leads, T = d.tasks;
   const n = (a, f) => a.filter(f).length, tile = (v, t) => `<div class="tile"><b>${v}</b><span>${t}</span></div>`;
   const ownerItems = [
@@ -301,7 +373,7 @@ async function dash() {
     ${E.map((x) => `<div class="card row"><div style="flex:1"><b>${e(x.title)}</b><br><span class="mute">${day(x.event_date)} · ${VENUES[x.venue_id]} · v${x.version}</span></div>${chip(STATUS[x.status])}${x.version ? `<button class="btn small" data-open="${x.id}">Open</button>` : ''}</div>`).join('')}
     <h2>Posts</h2><div class="tiles">${tile(n(P, (x) => x.status === 'scheduled'), 'Approved, not posted')}${tile(n(P, (x) => x.status === 'published'), 'Published')}${tile(n(P, (x) => ['failed', 'rejected'].includes(x.status)), 'Failed or rejected')}</div>
     ${P.filter((x) => x.status !== 'scheduled' || new Date(x.when) < now).slice(0, 30).map((x) => `<div class="msg"><span class="mute">${when(x.when, x.venue_id)} · ${e(x.platform)} · ${e(x.key)}</span><br>${chip(x.status === 'published' ? ['Published', 'ok'] : x.status === 'scheduled' ? ['Due, not posted', 'bad'] : [x.status, 'bad'])} ${x.status === 'published' ? chip(x.provider === 'mock' ? ['Test post, not real', 'warn'] : EVID[x.evidence]) : ''} ${x.url ? `<a href="${e(x.url)}" target="_blank" rel="noopener">link</a>` : ''} ${e(x.error || '')}</div>`).join('')}
-    <h2>Ad money</h2><div class="tiles">${tile('$' + Number(d.approved_ad_budget).toLocaleString(), 'Approved budget')}${tile('n/a', 'Actual spend: ad accounts not connected')}</div>
+    <h2>Ad money this month</h2><div class="tiles">${tile(money(sum('allowance')), 'Monthly allowance')}${tile(money(sum('committed')), 'Set aside for campaigns')}${tile(money(sum('actual')), 'Reported spent')}${tile(money(sum('remaining')), 'Left')}</div><p class="mute">${bv.buckets.some((b) => b.status !== 'confirmed') ? 'The budget is proposed and not confirmed yet, so nothing can launch. ' : ''}Spend is entered from platform reports, not read from the ad accounts. Campaigns, results and cost per result are on the Campaigns tab.</p>
     <h2>Leads</h2><div class="tiles">${tile(n(L, (x) => now - new Date(x.received_at) < 7 * 864e5), 'New this week')}${tile(n(L, (x) => x.status === 'new'), 'Not contacted')}${tile(n(L, (x) => x.status === 'scheduled' && /applicant|employment/.test(x.category)), 'Interviews scheduled')}${tile(n(L, (x) => x.status === 'scheduled' && x.category === 'entertainer_audition'), 'Auditions scheduled')}${tile(n(L, (x) => x.category === 'vip_group'), 'VIP inquiries')}</div>
     ${L.slice(0, 40).map((x) => `<div class="card"><div class="row"><b>${e(x.name || 'No name')}</b>${chip([x.category.replace(/_/g, ' '), ''])}${chip([x.status.replace(/_/g, ' '), x.status === 'new' ? 'warn' : ''])}${x.status === 'new' && new Date(x.deadline) < now ? chip(['Past deadline', 'bad']) : ''}</div>
       <p class="mute">${VENUES[x.venue_id]} · ${e(x.source)} · came in ${when(x.received_at, x.venue_id)} · ${e(x.manager || 'unassigned')} · ${x.attempts} update(s)${x.first_contact_at ? ' · first contact ' + when(x.first_contact_at, x.venue_id) : ''}</p>

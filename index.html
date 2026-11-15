@@ -72,8 +72,9 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
 const API = 'https://wybtlwwhdlilcrdvhbaa.supabase.co/functions/v1/luxops';
 // the access token rides in the URL fragment (#t=...) so it is never sent to a web server or written to its logs
 const m = location.hash.match(/t=([\w-]+)/);
-if (m) { try { sessionStorage.setItem('lux_t', m[1]); } catch {} history.replaceState(null, '', location.pathname); }
-let TOKEN = m ? m[1] : null; try { TOKEN ||= sessionStorage.getItem('lux_t'); } catch {}
+// kept on this device so links inside text messages ("?go=task:12") open straight to the right place
+if (m) { try { localStorage.setItem('lux_t', m[1]); } catch {} history.replaceState(null, '', location.pathname + location.search); }
+let TOKEN = m ? m[1] : null; try { TOKEN ||= localStorage.getItem('lux_t') || sessionStorage.getItem('lux_t'); } catch {}
 const $ = (s) => document.querySelector(s);
 const e = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const VENUES = { 654: 'Wisconsin', 655: 'Kentucky' }, TZ = { 654: 'America/Chicago', 655: 'America/New_York' };
@@ -164,7 +165,7 @@ const EVID = { verified: ['Verified', 'ok'], provider_confirmed: ['Confirmed by 
 const chip = (pair) => `<span class="chip ${pair?.[1] || ''}">${e(pair?.[0] || '')}</span>`;
 
 function nav() {
-  const tabs = [['home', 'Inbox'], ['camp', 'Campaigns']]; if (ME.role === 'owner') tabs.push(['dash', 'Dashboard'], ['new', 'New project']);
+  const tabs = [['home', 'Inbox'], ['camp', 'Campaigns'], ['sms', 'Texting']]; if (ME.role === 'owner') tabs.push(['dash', 'Dashboard'], ['new', 'New project']);
   $('#nav').innerHTML = tabs.map(([k, t]) => `<button data-v="${k}" aria-current="${VIEW === k}">${t}</button>`).join('');
   $('#nav').onclick = (ev) => { const v = ev.target.dataset?.v; if (v) { VIEW = v; route(); } };
 }
@@ -173,6 +174,7 @@ async function route() {
     if (VIEW === 'dash') return await dash();
     if (VIEW === 'new') return newEvent();
     if (VIEW === 'camp') return await campaigns();
+    if (VIEW === 'sms') return await texting();
     if (String(VIEW).startsWith('event:')) return await eventView(+VIEW.split(':')[1], +VIEW.split(':')[2] || undefined);
     await home();
   } catch (x) { $('#main').innerHTML = `<p class="err">${e(x.message === 'unauthorized' ? 'This link is not valid. Ask Lux Management for a new one.' : x.message)}</p>`; }
@@ -346,6 +348,29 @@ async function campaigns() {
     expected_outcome: $('#ce').value, outcome_metric: $('#cm').value, target_cost_per_outcome: num('#ctc'), est_cost: num('#cec'), start_date: $('#cs').value || null, end_date: $('#cen').value || null, reserve_request: num('#crr') || 0, reserve_reason: $('#crn').value });
 }
 
+// ---------- texting: enrollment, PIN, and the full message log ----------
+async function texting() {
+  const d = await api('sms_view'); nav();
+  const owner = d.me.role === 'owner';
+  $('#main').innerHTML = `
+    <h1>Texting</h1>
+    <div class="card ${d.live ? '' : 'banner'}"><b>${d.live ? 'Texting is live.' : 'Texting is not live yet.'}</b> ${d.live ? 'Messages below marked sent or delivered really went out.' : 'No real text has been sent. While it is off, messages to real phones are recorded here as not sent and are never sent later.'}</div>
+    <h2>Your PIN</h2>
+    <p class="mute">Status questions and ACK, DONE or BLOCKED on your own tasks work from your phone alone. Anything that changes someone else's work asks for this PIN first. Approvals, launches and budget are never done by text.</p>
+    <div class="row"><input id="pin" type="password" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="4 to 8 digits" aria-label="New PIN" style="flex:1;min-width:160px"><button class="btn small" id="pinset">${d.me.has_pin ? 'Change PIN' : 'Set PIN'}</button></div>
+    <p class="mute">${d.me.has_pin ? 'A PIN is set.' : 'No PIN set yet.'} ${d.me.enrolled ? 'Your phone ending ' + e(d.me.phone_last4 || '') + ' is enrolled.' : 'Your phone is not enrolled; the owner enrolls numbers.'}</p>
+    ${owner ? `<h2>Who gets texts</h2><p class="mute">Enter each mobile number yourself. Only numbers you enroll here are ever texted or listened to.</p>
+      ${d.people.map((x) => `<div class="card"><div class="row"><b>${e(x.name)}</b>${chip([x.role, ''])}${chip(x.enrolled ? ['Enrolled', 'ok'] : ['Not enrolled', ''])}${x.has_pin ? chip(['PIN set', 'ok']) : chip(['No PIN', 'warn'])}</div>
+        <div class="row" style="margin-top:8px"><input id="ph${x.id}" type="tel" placeholder="${x.phone_last4 ? 'ends ' + e(x.phone_last4) + ' (leave blank to keep)' : 'Mobile number'}" aria-label="Mobile number for ${e(x.name)}" style="flex:1;min-width:170px">
+        <button class="btn small primary" data-enroll="${x.id}">${x.enrolled ? 'Update' : 'Enroll'}</button>${x.enrolled ? `<button class="btn small" data-unenroll="${x.id}">Stop texts</button>` : ''}</div></div>`).join('')}` : ''}
+    <h2>Messages</h2>
+    ${d.messages.map((x) => `<div class="msg"><span class="mute">${when(x.at)} · ${x.direction === 'in' ? 'from' : 'to'} ${e(x.who)} · ${e(x.status)}${x.provider === 'mock' ? ' · test, not a real text' : ''}${x.error ? ' · ' + e(x.error) : ''}</span><br>${e(x.body)}</div>`).join('') || '<p class="mute">No messages yet.</p>'}`;
+  const call = async (btn, fn, args) => { btn.disabled = true; try { await api(fn, args); await route(); } catch (x) { alert(x.message); btn.disabled = false; } };
+  $('#pinset').onclick = (x) => call(x.target, 'sms_set_pin', { pin: $('#pin').value });
+  $('#main').querySelectorAll('[data-enroll]').forEach((b) => b.onclick = () => call(b, 'sms_enroll', { person_id: +b.dataset.enroll, phone: $('#ph' + b.dataset.enroll).value, enrolled: true }));
+  $('#main').querySelectorAll('[data-unenroll]').forEach((b) => b.onclick = () => call(b, 'sms_enroll', { person_id: +b.dataset.unenroll, enrolled: false }));
+}
+
 function newEvent() {
   nav();
   $('#main').innerHTML = `<h1>New project idea</h1><p class="mute">Type it the way you would say it. The AI builds the full package, a second AI checks it, then it goes to the venue manager for review.</p>
@@ -388,6 +413,8 @@ async function dash() {
   wire($('#main'));
 }
 
+const go = (new URLSearchParams(location.search).get('go') || '').split(':');
+if (go[0] === 'event' && +go[1]) VIEW = 'event:' + +go[1]; else if (go[0] === 'campaign') VIEW = 'camp';
 if (!TOKEN) $('#main').innerHTML = '<p>Open this page from the link Lux Management sent you.</p>'; else route();
 </script>
 </body>

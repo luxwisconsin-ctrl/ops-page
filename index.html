@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Lux Management</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&family=Permanent+Marker&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#07040d;--panel:#120822;--panel2:#1c0f33;--line:#2a1145;--text:#f3ecff;--mute:#b8a8d6;--purple:#a855f7;--lav:#e9d5ff;--gold:#fbbf24;--pink:#f472b6;--ok:#4ade80;--bad:#fb7185}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 Outfit,system-ui,sans-serif;-webkit-text-size-adjust:100%}
+main{max-width:860px;margin:0 auto;padding:12px 16px 120px}
+header{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5}
+.mark{font-family:"Permanent Marker",cursive;font-size:26px;color:#fff;-webkit-text-stroke:1px var(--purple);transform:rotate(-3deg)}
+header .who{margin-left:auto;color:var(--mute);font-size:13px;text-align:right}
+nav{display:flex;gap:6px;overflow-x:auto;padding:10px 16px 0}
+nav button,.btn{font:inherit;font-weight:600;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 14px;min-height:44px;cursor:pointer;white-space:nowrap}
+nav button[aria-current=true]{background:var(--purple);border-color:var(--purple);color:#fff}
+.btn.primary{background:var(--purple);border-color:var(--purple);color:#fff}
+.btn.gold{background:var(--gold);border-color:var(--gold);color:#1a1200}
+.btn.small{min-height:36px;padding:6px 10px;font-size:14px}
+.btn:disabled{opacity:.5}
+button:focus-visible,a:focus-visible,textarea:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+h1{font-size:26px;line-height:1.2;margin:14px 0 4px;font-weight:800}
+h2{font-size:18px;margin:26px 0 8px;font-weight:800;color:var(--lav)}
+p{margin:8px 0}
+a{color:var(--lav)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.mute{color:var(--mute);font-size:14px}
+.chip{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--lav);background:var(--panel2);white-space:nowrap}
+.chip.ok{color:#052e12;background:var(--ok);border-color:var(--ok)}
+.chip.warn{color:#1a1200;background:var(--gold);border-color:var(--gold)}
+.chip.bad{color:#3b0312;background:var(--bad);border-color:var(--bad)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px}
+.tile b{display:block;font-size:26px;font-weight:800;line-height:1.1}
+.tile span{font-size:13px;color:var(--mute)}
+details{background:var(--panel);border:1px solid var(--line);border-radius:14px;margin:8px 0}
+summary{padding:14px;font-weight:800;cursor:pointer;min-height:44px}
+details>div{padding:0 14px 14px}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px;margin:8px 0}
+th,td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top}
+th{color:var(--mute);font-weight:600}
+textarea,input,select{font:inherit;color:var(--text);background:#0c0618;border:1px solid var(--line);border-radius:10px;padding:10px;width:100%}
+textarea{min-height:88px}
+label{display:block;font-size:14px;color:var(--mute);margin:10px 0 4px}
+.flyers{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;align-items:start}
+.flyers figure{margin:0}
+.flyers canvas{width:100%;height:auto;border-radius:8px;border:1px solid var(--line);display:block}
+.flyers figcaption{font-size:13px;color:var(--mute);margin:4px 0}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom));z-index:6}
+.bar .in{max-width:860px;margin:0 auto;display:flex;gap:8px}
+.bar .btn{flex:1}
+.banner{border-color:var(--gold);background:#2a1f05}
+.msg{border-left:3px solid var(--purple);padding-left:10px;margin:10px 0}
+dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:14px;max-width:520px;width:calc(100% - 32px);padding:18px}
+dialog::backdrop{background:rgba(0,0,0,.7)}
+.err{color:var(--bad)}
+.caption{white-space:pre-wrap;background:#0c0618;border:1px solid var(--line);border-radius:8px;padding:8px;font-size:14px;margin:6px 0}
+</style>
+</head>
+<body>
+<header><span class="mark">LUX</span><b>Management</b><span class="who" id="who"></span></header>
+<nav id="nav"></nav>
+<main id="main"><p class="mute">Loading…</p></main>
+<dialog id="dlg"></dialog>
+<script>
+const API = 'https://wybtlwwhdlilcrdvhbaa.supabase.co/functions/v1/luxops';
+// the access token rides in the URL fragment (#t=...) so it is never sent to a web server or written to its logs
+const m = location.hash.match(/t=([\w-]+)/);
+if (m) { try { sessionStorage.setItem('lux_t', m[1]); } catch {} history.replaceState(null, '', location.pathname); }
+let TOKEN = m ? m[1] : null; try { TOKEN ||= sessionStorage.getItem('lux_t'); } catch {}
+const $ = (s) => document.querySelector(s);
+const e = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const VENUES = { 654: 'Wisconsin', 655: 'Kentucky' }, TZ = { 654: 'America/Chicago', 655: 'America/New_York' };
+const when = (t, v) => t ? new Date(t).toLocaleString('en-US', { timeZone: TZ[v] || undefined, weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
+const day = (d) => d ? new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : '';
+let ME, VIEW = 'home', VENUE = '';
+
+async function api(fn, args = {}) {
+  const r = await fetch(API, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ fn, args: { token: TOKEN, ...args } }) });
+  const j = await r.json().catch(() => ({ ok: false, error: 'The server did not answer. Try again.' }));
+  if (!j.ok) throw new Error(j.error);
+  return j.data;
+}
+async function act(btn, fn, args, after) {
+  btn.disabled = true;
+  try { await api(fn, args); await (after || route)(); } catch (x) { alert(x.message); btn.disabled = false; }
+}
+
+// ---------- tiny markdown: paragraphs, bold, links, lists, tables, [LABEL] chips ----------
+function inline(s) {
+  return e(s)
+    .replace(/\[([^\]]+)\]\((https:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+    .replace(/\[(CONFIRMED|REC|EST|ASSUMED|PRICE CHECKED)([^\]]*)\]/g, (_, k, rest) => `<span class="chip ${k === 'CONFIRMED' || k === 'PRICE CHECKED' ? 'ok' : k === 'REC' ? '' : 'warn'}">${{ CONFIRMED: 'Confirmed', REC: 'AI recommendation', EST: 'Estimate', ASSUMED: 'Not verified', 'PRICE CHECKED': 'Price checked' }[k]}${rest}</span>`);
+}
+function md(src) {
+  const out = []; const lines = src.trim().split('\n'); let i = 0;
+  while (i < lines.length) {
+    const l = lines[i];
+    if (/^\|/.test(l)) {
+      const rows = []; while (i < lines.length && /^\|/.test(lines[i])) rows.push(lines[i++].replace(/^\||\|$/g, '').split('|').map((c) => c.trim()));
+      const body = rows.filter((r) => !r.every((c) => /^-+$/.test(c)));
+      out.push('<div class="tablewrap"><table><thead><tr>' + body[0].map((c) => `<th>${inline(c)}</th>`).join('') + '</tr></thead><tbody>' + body.slice(1).map((r) => '<tr>' + r.map((c) => `<td>${inline(c)}</td>`).join('') + '</tr>').join('') + '</tbody></table></div>');
+    } else if (/^(-|\d+\.) /.test(l)) {
+      const tag = /^-/.test(l) ? 'ul' : 'ol'; const items = [];
+      while (i < lines.length && /^(-|\d+\.) /.test(lines[i])) items.push(lines[i++].replace(/^(-|\d+\.) /, ''));
+      out.push(`<${tag}>` + items.map((t) => `<li>${inline(t)}</li>`).join('') + `</${tag}>`);
+    } else if (l.trim()) { out.push(`<p>${inline(l)}</p>`); i++; } else i++;
+  }
+  return out.join('');
+}
+
+// ---------- flyers: drawn from the package's creative block, so the text always matches the version being approved ----------
+const FORMATS = [['Feed post 4:5', 1080, 1350, 'feed'], ['Square post', 1080, 1080, 'square'], ['Story / reel cover', 1080, 1920, 'story'], ['Facebook event cover', 1920, 1005, 'event'], ['Website banner', 1920, 600, 'banner'], ['Print flyer, letter', 2550, 3300, 'print']];
+function drawFlyer(cv, w, h, c) {
+  cv.width = w; cv.height = h; const x = cv.getContext('2d');
+  const g = x.createLinearGradient(0, 0, w, h); g.addColorStop(0, '#07040d'); g.addColorStop(0.55, '#120822'); g.addColorStop(1, '#2a1145'); x.fillStyle = g; x.fillRect(0, 0, w, h);
+  const glow = x.createRadialGradient(w / 2, h * 0.42, 0, w / 2, h * 0.42, Math.max(w, h) * 0.6); glow.addColorStop(0, c.accent + '66'); glow.addColorStop(1, c.accent + '00'); x.fillStyle = glow; x.fillRect(0, 0, w, h);
+  const wide = w / h > 2.4, land = w > h;
+  // [text, relative size, font, color, gap after]
+  let L = [['LUX VIEWS', 7, 'mark', '#fff', 3], [c.kicker, 4, '800', c.accent2, 1.5], [c.headline, land ? 15 : 13, '900', '#fff', 1.5], [c.sub, 4.2, '600', '#e9d5ff', 4],
+    [c.date_line, 9, '900', c.accent2, 1], [c.time_line, 4.6, '800', '#fff', 3], [c.price_line, 4.4, '800', c.accent, 1.5], [c.extra, 4, '600', '#fff', 3], [c.cta, 3.6, '600', '#e9d5ff', 3], [c.footer, 2.5, '600', '#b8a8d6', 0]];
+  if (wide) L = L.filter((l) => ![c.sub, c.extra, c.cta].includes(l[0]));
+  L = L.filter((l) => l[0]);
+  // portrait headlines wrap onto two lines when they are long
+  if (!land && c.headline.length > 12 && c.headline.includes(' ')) {
+    const i = L.findIndex((l) => l[0] === c.headline), words = c.headline.split(' '), mid = Math.ceil(words.length / 2);
+    L.splice(i, 1, [words.slice(0, mid).join(' '), 13, '900', '#fff', 0.5], [words.slice(mid).join(' '), 13, '900', '#fff', 1.5]);
+  }
+  const total = L.reduce((s, l) => s + l[1] * 1.15 + l[4], 0), s = (h * 0.88) / total; let y = h * 0.06;
+  x.textAlign = 'center'; x.textBaseline = 'top';
+  for (const [text, size, font, color, gap] of L) {
+    let px = size * s; const fam = font === 'mark' ? `${px}px "Permanent Marker"` : `${font} ${px}px Outfit`;
+    x.font = fam; const tw = x.measureText(text).width, max = w * 0.9;
+    if (tw > max) { px *= max / tw; x.font = font === 'mark' ? `${px}px "Permanent Marker"` : `${font} ${px}px Outfit`; }
+    if (font === 'mark') { x.lineWidth = px * 0.06; x.strokeStyle = c.accent; x.strokeText(text, w / 2, y); }
+    x.fillStyle = color; x.fillText(text, w / 2, y + (size * s - px) / 2);
+    y += size * s * 1.15 + gap * s;
+  }
+}
+async function flyers(c, title) {
+  await Promise.all([document.fonts.load('900 40px Outfit'), document.fonts.load('40px "Permanent Marker"')]).catch(() => {});
+  const box = $('#flyers'); if (!box) return;
+  for (const [name, w, h, key] of FORMATS) {
+    const f = document.createElement('figure'), cv = document.createElement('canvas');
+    cv.setAttribute('role', 'img'); cv.setAttribute('aria-label', `${name} flyer: ${c.headline}, ${c.date_line}, ${c.time_line}, ${c.price_line}`);
+    drawFlyer(cv, w, h, c);
+    f.append(cv); f.insertAdjacentHTML('beforeend', `<figcaption>${e(name)}<br>${w} × ${h}</figcaption>`);
+    const b = document.createElement('button'); b.className = 'btn small'; b.textContent = 'Download';
+    b.onclick = () => cv.toBlob((blob) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${title.replace(/\W+/g, '-')}-${key}-${w}x${h}.png`; a.click(); });
+    f.append(b); box.append(f);
+  }
+}
+
+// ---------- views ----------
+const STATUS = { producing: ['Being built', ''], reviewing: ['AI review', ''], revising: ['Being revised', ''], awaiting_manager: ['Needs your review', 'warn'], approved: ['Approved', 'ok'], cancelled: ['Cancelled', 'bad'] };
+const EVID = { verified: ['Verified', 'ok'], provider_confirmed: ['Confirmed by platform', 'ok'], self_reported: ['Self-reported', 'warn'], none: ['No evidence yet', ''] };
+const chip = (pair) => `<span class="chip ${pair?.[1] || ''}">${e(pair?.[0] || '')}</span>`;
+
+function nav() {
+  const tabs = [['home', 'Inbox']]; if (ME.role === 'owner') tabs.push(['dash', 'Dashboard'], ['new', 'New event']);
+  $('#nav').innerHTML = tabs.map(([k, t]) => `<button data-v="${k}" aria-current="${VIEW === k}">${t}</button>`).join('');
+  $('#nav').onclick = (ev) => { const v = ev.target.dataset?.v; if (v) { VIEW = v; route(); } };
+}
+async function route() {
+  try {
+    if (VIEW === 'dash') return await dash();
+    if (VIEW === 'new') return newEvent();
+    if (String(VIEW).startsWith('event:')) return await eventView(+VIEW.split(':')[1], +VIEW.split(':')[2] || undefined);
+    await home();
+  } catch (x) { $('#main').innerHTML = `<p class="err">${e(x.message === 'unauthorized' ? 'This link is not valid. Ask Lux Management for a new one.' : x.message)}</p>`; }
+}
+
+function leadCard(l) {
+  return `<div class="card"><div class="row"><b>${e(l.name || 'No name')}</b>${chip([l.category.replace(/_/g, ' '), ''])}${chip([l.status.replace(/_/g, ' '), l.status === 'new' ? 'warn' : ''])}</div>
+    <p class="mute">${e(l.phone || '')} ${e(l.email || '')}<br>Came in ${when(l.received_at, l.venue_id)} · contact by ${when(l.contact_deadline, l.venue_id)}</p>
+    ${l.body ? `<p>${e(l.body)}</p>` : ''}${l.outcome ? `<p class="mute">Last update: ${e(l.outcome)} ${chip(EVID[l.outcome_evidence])}</p>` : ''}
+    <label for="l${l.id}">What happened? (for example: "Contacted, waiting on response" or "Interview scheduled Thursday at 6")</label>
+    <textarea id="l${l.id}"></textarea><p><button class="btn primary small" data-lead="${l.id}">Save update</button></p></div>`;
+}
+function taskCard(t) {
+  const over = t.status === 'open' && new Date(t.due_at) < new Date();
+  return `<div class="card"><div class="row"><b>${e(t.title)}</b>${chip([t.priority, t.priority === 'high' ? 'bad' : ''])}${over ? chip(['Overdue', 'bad']) : ''}${t.status === 'delay_requested' ? chip(['Delay requested', 'warn']) : ''}</div>
+    <p class="mute">Due ${when(t.due_at, t.venue_id)}${t.description ? ' · Done when: ' + e(t.description) : ''}${t.evidence_required ? ' · Proof: ' + e(t.evidence_required) : ''}</p>
+    <label for="t${t.id}">Note or proof (what you did, link to a photo or receipt)</label><textarea id="t${t.id}"></textarea>
+    <div class="row" style="margin-top:8px"><button class="btn primary small" data-task="${t.id}">Mark done</button>
+    <input type="datetime-local" id="d${t.id}" aria-label="New due date" style="width:auto;flex:1;min-width:180px"><button class="btn small" data-delay="${t.id}">Ask for more time</button></div></div>`;
+}
+function wire(root) {
+  root.querySelectorAll('[data-open]').forEach((b) => b.onclick = () => { VIEW = 'event:' + b.dataset.open; route(); scrollTo(0, 0); });
+  root.querySelectorAll('[data-lead]').forEach((b) => b.onclick = () => act(b, 'lead_update', { lead_id: +b.dataset.lead, text: $('#l' + b.dataset.lead).value }));
+  root.querySelectorAll('[data-task]').forEach((b) => b.onclick = () => act(b, 'task_update', { task_id: +b.dataset.task, action: 'done', note: $('#t' + b.dataset.task).value, evidence: $('#t' + b.dataset.task).value }));
+  root.querySelectorAll('[data-delay]').forEach((b) => b.onclick = () => { const d = $('#d' + b.dataset.delay).value; act(b, 'task_update', { task_id: +b.dataset.delay, action: 'delay', note: $('#t' + b.dataset.delay).value, new_due: d ? new Date(d).toISOString() : null }); });
+  root.querySelectorAll('[data-decide]').forEach((b) => b.onclick = () => act(b, 'owner_decide', JSON.parse(b.dataset.decide)));
+}
+
+async function home() {
+  const d = await api('inbox'); ME = d.me; nav();
+  $('#who').innerHTML = `${e(ME.name)}<br>${ME.venue_id ? VENUES[ME.venue_id] : 'All venues'}${ME.is_test ? ' · TEST DATA' : ''}`;
+  const review = d.events.filter((x) => x.status === 'awaiting_manager');
+  $('#main').innerHTML = `
+    ${review.length ? `<h2>Waiting on you</h2>` + review.map((x) => `<div class="card banner"><b>${e(x.title)}</b><p class="mute">${day(x.event_date)} · ${VENUES[x.venue_id]} · version ${x.version}</p><button class="btn gold" data-open="${x.id}">Review package</button></div>`).join('') : ''}
+    <h2>Tasks</h2>${d.tasks.map(taskCard).join('') || '<p class="mute">Nothing open.</p>'}
+    <h2>Leads to follow up</h2>${d.leads.map(leadCard).join('') || '<p class="mute">No open leads.</p>'}
+    <h2>Events</h2>${d.events.map((x) => `<div class="card row"><div style="flex:1"><b>${e(x.title)}</b><br><span class="mute">${day(x.event_date)} · ${VENUES[x.venue_id]}</span></div>${chip(STATUS[x.status])}${x.version ? `<button class="btn small" data-open="${x.id}">Open</button>` : ''}</div>`).join('') || '<p class="mute">No events yet.</p>'}
+    <h2>Messages</h2>${d.messages.map((x) => `<div class="msg"><span class="mute">${when(x.created_at)} · ${e(x.kind.replace(/_/g, ' '))}</span><br>${e(x.body)}</div>`).join('') || '<p class="mute">No messages.</p>'}`;
+  wire($('#main'));
+}
+
+async function eventView(id, version) {
+  const d = await api('event_get', { event_id: id, version }); const ev = d.event, p = d.package, cur = d.version === ev.current_version;
+  if (!p) { $('#main').innerHTML = `<h1>${e(ev.title)}</h1><p class="mute">This package is still being built. Check back shortly.</p>`; return; }
+  const rv = d.reviews.filter((r) => r.version === d.version), last = rv.at(-1), open = last?.findings?.filter((f) => f.severity !== 'low') || [];
+  const approved = d.approvals.find((a) => a.version === d.version);
+  const img = { feed: 'Feed post 4:5', story: 'Story / reel cover', reel: 'Story / reel cover + the reel idea in Marketing plan', event: 'Facebook event cover' };
+  $('#main').innerHTML = `
+    <p><button class="btn small" id="back">← Back</button></p>
+    <h1>${e(p.title)}</h1>
+    <div class="row"><span class="mute">${day(p.event_date)} · Lux ${VENUES[ev.venue_id]}</span>${chip(STATUS[ev.status])}
+      <label for="ver" style="margin:0">Version</label><select id="ver" style="width:auto">${d.versions.map((v) => `<option value="${v.version}" ${v.version === d.version ? 'selected' : ''}>${v.version}${v.version === ev.current_version ? ' (latest)' : ''}</option>`).join('')}</select></div>
+    ${d.versions.find((v) => v.version === d.version)?.change_note ? `<p class="mute">This version: ${e(d.versions.find((v) => v.version === d.version).change_note)}</p>` : ''}
+    ${!cur ? `<div class="card banner">You are looking at an old version. Only the latest version can be approved.</div>` : ''}
+    ${approved ? `<div class="card"><span class="chip ok">Approved</span> by ${e(approved.by)} on ${when(approved.created_at, ev.venue_id)} · platforms: ${e(approved.platforms.join(', ') || 'none')} · ad budget $${e(approved.approved_budget)}</div>` : ''}
+    ${ev.needs_human && cur ? `<div class="card banner"><b>The two AIs did not agree on everything.</b> Read the open issues below before approving.</div>` : ''}
+    <p>${e(p.summary)}</p>
+
+    <h2>Decisions in this version</h2>
+    <p class="mute">These are recommendations, not approved yet. Approving this version approves them as written. To change one, tell us below.</p>
+    ${p.decisions.map((x) => `<div class="card"><span class="mute">${e(x.question)}</span><br><b>${e(x.recommended)}</b> <span class="chip">AI recommendation</span><p class="mute">${e(x.why)}</p></div>`).join('')}
+
+    <h2>Flyers and graphics</h2><p class="mute">Drawn from this exact version. Tap Download for the full-size image.</p><div class="flyers" id="flyers"></div>
+
+    <h2>The plan</h2>${p.sections.map((s) => `<details><summary>${e(s.title)}</summary><div>${md(s.md)}</div></details>`).join('')}
+
+    <h2>Posting schedule</h2>
+    ${p.schedule.map((s) => { const j = cur && d.publishing.find((q) => q.deliverable_key === s.key && q.version === d.version);
+      return `<div class="card"><div class="row"><b>${when(s.when, ev.venue_id)}</b>${chip([s.platform + ' ' + s.format, ''])}${j ? chip(j.status === 'published' ? ['Published', 'ok'] : j.status === 'scheduled' ? ['Approved, not posted yet', 'warn'] : [j.status, 'bad']) : ''}${j?.status === 'published' ? chip(j.provider === 'mock' ? ['Test post, not real', 'warn'] : EVID[j.evidence]) : ''}</div>
+      <div class="caption">${e(s.caption)}</div><span class="mute">Image: ${e(img[s.format] || 'see flyers')} · ${e(s.account)}</span>
+      ${j?.publication_url ? `<br><a href="${e(j.publication_url)}" target="_blank" rel="noopener">${e(j.publication_url)}</a>` : ''}
+      ${j?.status === 'scheduled' && j.provider === 'manual' ? `<label for="u${j.id}">After you post it, paste the link to the live post</label><div class="row"><input id="u${j.id}" type="url" placeholder="https://" style="flex:1"><button class="btn small" data-pub="${j.id}">Mark posted</button></div>` : ''}</div>`; }).join('')}
+
+    <h2>Manager checklist</h2>
+    <div class="tablewrap"><table><thead><tr><th>Task</th><th>Who</th><th>Due</th><th>Done when</th><th>Proof</th></tr></thead><tbody>
+    ${p.checklist.map((c) => `<tr><td>${e(c.task)} ${c.priority === 'high' ? '<span class="chip bad">high</span>' : ''}</td><td>${e(c.role)}</td><td>${when(c.due, ev.venue_id)}</td><td>${e(c.completion)}</td><td>${e(c.evidence)}</td></tr>`).join('')}</tbody></table></div>
+
+    <h2>Independent AI review</h2>
+    ${last ? `<p class="mute">Reviewed by ${e(last.reviewer)} · ${last.verdict === 'pass' ? 'no blocking issues' : open.length + ' issue(s) raised'}</p>` + (last.findings.length ? last.findings.map((f) => `<div class="card"><span class="chip ${f.severity === 'high' ? 'bad' : f.severity === 'medium' ? 'warn' : ''}">${e(f.severity)}</span> <b>${e(f.where)}</b><p>${e(f.issue)}</p><p class="mute">Suggested fix: ${e(f.fix)}</p></div>`).join('') : '') : '<p class="mute">Not reviewed yet.</p>'}
+
+    <h2>History</h2>
+    ${d.feedback.map((f) => `<div class="msg"><span class="mute">${e(f.by)} asked for changes on version ${f.version}, ${when(f.at, ev.venue_id)}</span><br>${e(f.body)}</div>`).join('')}
+    ${d.approvals.map((a) => `<div class="msg"><span class="mute">${e(a.by)} approved version ${a.version}, ${when(a.created_at, ev.venue_id)}</span><br>Fingerprint ${e(a.sha256.slice(0, 12))}</div>`).join('') || (d.feedback.length ? '' : '<p class="mute">No changes requested yet.</p>')}
+    ${cur && ['awaiting_manager', 'approved'].includes(ev.status) ? `<h2>Want something changed?</h2>
+      <label for="fb">Say it in plain words. Example: "Let's do $20 cover, change the flyer to purple, remove the goodie bags, and make another story version."</label>
+      <textarea id="fb"></textarea><p><button class="btn" id="send">Send changes</button> <span class="mute">The package is revised, re-checked and sent back to you.${ev.status === 'approved' ? ' This cancels the current approval.' : ''}</span></p>` : ''}
+    ${cur && ev.status === 'awaiting_manager' ? `<div class="bar"><div class="in"><button class="btn gold" id="approve">Approve version ${d.version}</button></div></div>` : ''}`;
+  flyers(p.creative, p.title);
+  $('#back').onclick = () => { VIEW = 'home'; route(); };
+  $('#ver').onchange = (x) => { VIEW = `event:${id}:${x.target.value}`; route(); };
+  $('#main').querySelectorAll('[data-pub]').forEach((b) => b.onclick = () => act(b, 'publish_record', { job_id: +b.dataset.pub, url: $('#u' + b.dataset.pub).value }));
+  if ($('#send')) $('#send').onclick = (x) => act(x.target, 'feedback', { event_id: id, text: $('#fb').value }, async () => { VIEW = 'home'; await route(); alert('Got it. The package is being revised and will come back for your review.'); });
+  if ($('#approve')) $('#approve').onclick = () => {
+    const plats = [...new Set(p.schedule.map((s) => s.platform))], dlg = $('#dlg');
+    dlg.innerHTML = `<h2 style="margin-top:0">Approve version ${d.version}</h2>
+      <p>You are approving the decisions, flyers, plan and posting schedule exactly as shown. Any change after this needs a new approval.</p>
+      <p><b>Post on:</b></p>${plats.map((x) => `<label style="color:var(--text)"><input type="checkbox" value="${e(x)}" checked style="width:auto"> ${e(x)}</label>`).join('')}
+      ${ME.role === 'owner' ? `<label for="bud">Paid ad budget you authorize for this event, total dollars (0 for none)</label><input id="bud" type="number" min="0" step="1" value="0">` : `<p class="mute">Paid ads are not part of this approval. Only the owner can approve ad money.</p>`}
+      <p class="row" style="margin-top:14px"><button class="btn gold" id="yes">Approve</button><button class="btn" id="no">Cancel</button></p>`;
+    dlg.showModal(); $('#no').onclick = () => dlg.close();
+    $('#yes').onclick = (x) => act(x.target, 'approve', { event_id: id, version: d.version, sha256: d.sha256, budget: +($('#bud')?.value || 0), platforms: [...dlg.querySelectorAll('input[type=checkbox]:checked')].map((c) => c.value), actions: ['organic_posts', 'manager_tasks'] }, async () => { dlg.close(); await route(); });
+  };
+}
+
+function newEvent() {
+  nav();
+  $('#main').innerHTML = `<h1>New event idea</h1><p class="mute">Type it the way you would say it. The AI builds the full package, a second AI checks it, then it goes to the venue manager for review.</p>
+    <label for="nv">Venue</label><select id="nv"><option value="654">Lux Wisconsin</option><option value="655">Lux Kentucky</option></select>
+    <label for="nd">Event date</label><input id="nd" type="date">
+    <label for="nt">The idea</label><textarea id="nt" style="min-height:140px" placeholder="Wednesday November 25, Jello Wrestling. Participants arrive at 9, matches start at 10, first and second place cash prizes, $15 or $20 cover."></textarea>
+    <p><button class="btn primary" id="go">Build the package</button></p>`;
+  $('#go').onclick = (x) => act(x.target, 'submit_event', { venue_id: +$('#nv').value, event_date: $('#nd').value || null, text: $('#nt').value }, async () => { VIEW = 'home'; await route(); });
+}
+
+async function dash() {
+  const d = await api('dashboard', { venue_id: VENUE ? +VENUE : null }); nav();
+  const now = new Date(), E = d.events, P = d.publishing, L = d.leads, T = d.tasks;
+  const n = (a, f) => a.filter(f).length, tile = (v, t) => `<div class="tile"><b>${v}</b><span>${t}</span></div>`;
+  const ownerItems = [
+    ...T.filter((t) => t.status === 'delay_requested').map((t) => `<div class="card"><b>${e(t.manager)} wants more time: ${e(t.title)}</b><p class="mute">Was due ${when(t.due, t.venue_id)} · asking for ${when(t.requested_due, t.venue_id)} · ${e(t.outcome)}</p><div class="row"><button class="btn small primary" data-decide='${e(JSON.stringify({ what: 'delay', id: t.id, approve: true }))}'>Approve new date</button><button class="btn small" data-decide='${e(JSON.stringify({ what: 'delay', id: t.id, approve: false }))}'>Keep old date</button></div></div>`),
+    ...E.filter((x) => x.needs_human && x.status === 'awaiting_manager').map((x) => `<div class="card"><b>${e(x.title)}</b><p class="mute">The AI reviewer still has open issues on this package.</p><button class="btn small" data-open="${x.id}">Open</button></div>`),
+    ...d.messages.filter((x) => x.kind === 'escalation').slice(0, 10).map((x) => `<div class="msg"><span class="mute">${when(x.at)}</span><br>${e(x.body)}</div>`)];
+  $('#main').innerHTML = `
+    <div class="row" style="margin-top:12px"><label for="vf" style="margin:0">Venue</label><select id="vf" style="width:auto"><option value="">Both</option><option value="654">Wisconsin</option><option value="655">Kentucky</option></select><span class="mute">Updated ${when(d.generated_at)}</span></div>
+    <h2>Needs you</h2>${ownerItems.join('') || '<p class="mute">Nothing needs you right now.</p>'}
+    <h2>Events</h2><div class="tiles">${tile(n(E, (x) => x.status !== 'cancelled' && new Date(x.event_date + 'T23:59') >= now), 'Upcoming')}${tile(n(E, (x) => ['producing', 'reviewing', 'revising'].includes(x.status)), 'Being developed')}${tile(n(E, (x) => x.status === 'awaiting_manager'), 'Awaiting manager review')}${tile(n(E, (x) => x.status === 'approved'), 'Approved')}</div>
+    ${E.map((x) => `<div class="card row"><div style="flex:1"><b>${e(x.title)}</b><br><span class="mute">${day(x.event_date)} · ${VENUES[x.venue_id]} · v${x.version}</span></div>${chip(STATUS[x.status])}${x.version ? `<button class="btn small" data-open="${x.id}">Open</button>` : ''}</div>`).join('')}
+    <h2>Posts</h2><div class="tiles">${tile(n(P, (x) => x.status === 'scheduled'), 'Approved, not posted')}${tile(n(P, (x) => x.status === 'published'), 'Published')}${tile(n(P, (x) => ['failed', 'rejected'].includes(x.status)), 'Failed or rejected')}</div>
+    ${P.filter((x) => x.status !== 'scheduled' || new Date(x.when) < now).slice(0, 30).map((x) => `<div class="msg"><span class="mute">${when(x.when, x.venue_id)} · ${e(x.platform)} · ${e(x.key)}</span><br>${chip(x.status === 'published' ? ['Published', 'ok'] : x.status === 'scheduled' ? ['Due, not posted', 'bad'] : [x.status, 'bad'])} ${x.status === 'published' ? chip(x.provider === 'mock' ? ['Test post, not real', 'warn'] : EVID[x.evidence]) : ''} ${x.url ? `<a href="${e(x.url)}" target="_blank" rel="noopener">link</a>` : ''} ${e(x.error || '')}</div>`).join('')}
+    <h2>Ad money</h2><div class="tiles">${tile('$' + Number(d.approved_ad_budget).toLocaleString(), 'Approved budget')}${tile('n/a', 'Actual spend: ad accounts not connected')}</div>
+    <h2>Leads</h2><div class="tiles">${tile(n(L, (x) => now - new Date(x.received_at) < 7 * 864e5), 'New this week')}${tile(n(L, (x) => x.status === 'new'), 'Not contacted')}${tile(n(L, (x) => x.status === 'scheduled' && /applicant|employment/.test(x.category)), 'Interviews scheduled')}${tile(n(L, (x) => x.status === 'scheduled' && x.category === 'entertainer_audition'), 'Auditions scheduled')}${tile(n(L, (x) => x.category === 'vip_group'), 'VIP inquiries')}</div>
+    ${L.slice(0, 40).map((x) => `<div class="card"><div class="row"><b>${e(x.name || 'No name')}</b>${chip([x.category.replace(/_/g, ' '), ''])}${chip([x.status.replace(/_/g, ' '), x.status === 'new' ? 'warn' : ''])}${x.status === 'new' && new Date(x.deadline) < now ? chip(['Past deadline', 'bad']) : ''}</div>
+      <p class="mute">${VENUES[x.venue_id]} · ${e(x.source)} · came in ${when(x.received_at, x.venue_id)} · ${e(x.manager || 'unassigned')} · ${x.attempts} update(s)${x.first_contact_at ? ' · first contact ' + when(x.first_contact_at, x.venue_id) : ''}</p>
+      ${x.outcome ? `<p>${e(x.outcome)} ${chip(EVID[x.evidence])} ${x.evidence === 'self_reported' ? `<button class="btn small" data-decide='${e(JSON.stringify({ what: 'verify_lead', id: x.id }))}'>I checked this, mark verified</button>` : ''}</p>` : ''}</div>`).join('') || '<p class="mute">No leads yet.</p>'}
+    <h2>Tasks</h2><div class="tiles">${tile(n(T, (x) => x.overdue), 'Overdue')}${tile(n(T, (x) => x.status === 'open' && !x.overdue), 'Open')}${tile(n(T, (x) => x.status === 'done'), 'Completed')}</div>
+    ${T.filter((x) => x.overdue || x.status === 'done').slice(0, 40).map((x) => `<div class="card"><div class="row"><b>${e(x.title)}</b>${x.overdue ? chip(['Overdue', 'bad']) : chip(['Done', 'ok'])}${x.status === 'done' ? chip(EVID[x.evidence_kind]) : ''}</div><p class="mute">${VENUES[x.venue_id]} · ${e(x.manager || '')} · due ${when(x.due, x.venue_id)}${x.outcome ? ' · ' + e(x.outcome) : ''}</p>
+      ${x.status === 'done' && x.evidence_kind === 'self_reported' ? `<button class="btn small" data-decide='${e(JSON.stringify({ what: 'verify_task', id: x.id }))}'>I checked this, mark verified</button>` : ''}</div>`).join('')}
+    <h2>Manager response times</h2>${d.response_times.length ? `<div class="tablewrap"><table><thead><tr><th>Manager</th><th>Leads</th><th>Contacted</th><th>Avg hours to first contact</th></tr></thead><tbody>${d.response_times.map((r) => `<tr><td>${e(r.manager)}</td><td>${r.leads}</td><td>${r.contacted}</td><td>${r.avg_hours_to_first_contact ?? 'n/a'}</td></tr>`).join('')}</tbody></table></div><p class="mute">Based on what managers reported, not independently verified.</p>` : '<p class="mute">No leads yet.</p>'}
+    <details><summary>Messages the system sent (${d.messages.length})</summary><div>${d.messages.map((x) => `<div class="msg"><span class="mute">${when(x.at)} · to ${e(x.to)} · ${e(x.kind.replace(/_/g, ' '))}</span><br>${e(x.body)}</div>`).join('')}</div></details>
+    <details><summary>Full history (${d.audit.length})</summary><div>${d.audit.map((x) => `<div class="msg"><span class="mute">${when(x.at)} · ${e(x.who || 'system')}</span><br>${e(x.action.replace(/_/g, ' '))} · ${e(x.ref)}</div>`).join('')}</div></details>`;
+  $('#vf').value = VENUE; $('#vf').onchange = (x) => { VENUE = x.target.value; route(); };
+  wire($('#main'));
+}
+
+if (!TOKEN) $('#main').innerHTML = '<p>Open this page from the link Lux Management sent you.</p>'; else route();
+</script>
+</body>
+</html>

@@ -374,7 +374,7 @@ async function texting() {
   $('#pinset').onclick = (x) => call(x.target, 'sms_set_pin', { pin: $('#pin').value });
   if ($('#tglink')) $('#tglink').onclick = async (x) => {   // the link is made for the signed-in person only, works once, and expires
     x.target.disabled = true;
-    try { const r = await api('telegram_link_start'); $('#tgout').innerHTML = `<p><a class="btn primary" href="${e(r.url)}" target="_blank" rel="noopener">Open Telegram and press Start</a></p><p class="mute">This link works once and expires in ${r.minutes} minutes. Do not forward it: whoever opens it becomes you in the chat.</p>`; }
+    try { const r = await api('telegram_link_start'); $('#tgout').innerHTML = `<p><a class="btn primary" href="${e(r.url)}" target="_blank" rel="noopener">Open Telegram and press Start</a></p><p>Telegram on a different device? Open <b>@${e(r.bot)}</b> there and send it this code: <b style="font-size:1.3em;letter-spacing:.08em">${e(r.code)}</b></p><p class="mute">The link and the code work once and expire in ${r.minutes} minutes. Do not share them: whoever uses them becomes you in the chat.</p>`; }
     catch (err) { alert(err.message); }
     x.target.disabled = false;
   };

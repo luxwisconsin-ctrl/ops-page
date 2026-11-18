@@ -355,18 +355,30 @@ async function texting() {
   $('#main').innerHTML = `
     <h1>Texting</h1>
     <div class="card ${d.live ? '' : 'banner'}"><b>${d.live ? 'Texting is live.' : 'Texting is not live yet.'}</b> ${d.live ? 'Messages below marked sent or delivered really went out.' : 'No real text has been sent. While it is off, messages to real phones are recorded here as not sent and are never sent later.'}</div>
+    <h2>Telegram</h2>
+    <div class="card ${d.telegram_live ? '' : 'banner'}"><b>${d.telegram_live ? 'Telegram is live.' : 'Telegram is not live yet.'}</b> ${d.telegram_live ? 'The bot answers and sends reminders in your private chat with it.' : 'You can connect now. The bot reads your messages but sends nothing until the owner switches it on.'}</div>
+    <p class="mute">${d.me.telegram ? 'Your Telegram is connected.' : 'Your Telegram is not connected.'} Once connected, everything the system sends you goes to Telegram instead of text. Send /stop in the chat to turn it off.</p>
+    ${d.me.telegram_allowed ? `<div class="row"><button class="btn small primary" id="tglink">${d.me.telegram ? 'Reconnect Telegram' : 'Connect Telegram'}</button></div><div id="tgout"></div>` : '<p class="mute">The owner turns Telegram on for each person first.</p>'}
     <h2>Your PIN</h2>
     <p class="mute">Status questions and ACK, DONE or BLOCKED on your own tasks work from your phone alone. Anything that changes someone else's work asks for this PIN first. Approvals, launches and budget are never done by text.</p>
     <div class="row"><input id="pin" type="password" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="4 to 8 digits" aria-label="New PIN" style="flex:1;min-width:160px"><button class="btn small" id="pinset">${d.me.has_pin ? 'Change PIN' : 'Set PIN'}</button></div>
     <p class="mute">${d.me.has_pin ? 'A PIN is set.' : 'No PIN set yet.'} ${d.me.enrolled ? 'Your phone ending ' + e(d.me.phone_last4 || '') + ' is enrolled.' : 'Your phone is not enrolled; the owner enrolls numbers.'}</p>
     ${owner ? `<h2>Who gets texts</h2><p class="mute">Enter each mobile number yourself. Only numbers you enroll here are ever texted or listened to.</p>
-      ${d.people.map((x) => `<div class="card"><div class="row"><b>${e(x.name)}</b>${chip([x.role, ''])}${chip(x.enrolled ? ['Enrolled', 'ok'] : ['Not enrolled', ''])}${x.has_pin ? chip(['PIN set', 'ok']) : chip(['No PIN', 'warn'])}</div>
+      ${d.people.map((x) => `<div class="card"><div class="row"><b>${e(x.name)}</b>${chip([x.role, ''])}${chip(x.enrolled ? ['Enrolled', 'ok'] : ['Not enrolled', ''])}${x.has_pin ? chip(['PIN set', 'ok']) : chip(['No PIN', 'warn'])}${x.telegram ? chip(['Telegram connected', 'ok']) : x.telegram_allowed ? chip(['Telegram allowed', '']) : ''}</div>
         <div class="row" style="margin-top:8px"><input id="ph${x.id}" type="tel" placeholder="${x.phone_last4 ? 'ends ' + e(x.phone_last4) + ' (leave blank to keep)' : 'Mobile number'}" aria-label="Mobile number for ${e(x.name)}" style="flex:1;min-width:170px">
-        <button class="btn small primary" data-enroll="${x.id}">${x.enrolled ? 'Update' : 'Enroll'}</button>${x.enrolled ? `<button class="btn small" data-unenroll="${x.id}">Stop texts</button>` : ''}</div></div>`).join('')}` : ''}
+        <button class="btn small primary" data-enroll="${x.id}">${x.enrolled ? 'Update' : 'Enroll'}</button>${x.enrolled ? `<button class="btn small" data-unenroll="${x.id}">Stop texts</button>` : ''}
+        ${x.role === 'owner' && !x.telegram ? '' : `<button class="btn small" data-tg="${x.id}" data-on="${x.telegram || (x.telegram_allowed && x.role !== 'owner') ? 0 : 1}">${x.telegram ? 'Disconnect Telegram' : x.telegram_allowed ? 'Turn Telegram off' : 'Allow Telegram'}</button>`}</div></div>`).join('')}` : ''}
     <h2>Messages</h2>
-    ${d.messages.map((x) => `<div class="msg"><span class="mute">${when(x.at)} · ${x.direction === 'in' ? 'from' : 'to'} ${e(x.who)} · ${e(x.status)}${x.provider === 'mock' ? ' · test, not a real text' : ''}${x.error ? ' · ' + e(x.error) : ''}</span><br>${e(x.body)}</div>`).join('') || '<p class="mute">No messages yet.</p>'}`;
+    ${d.messages.map((x) => `<div class="msg"><span class="mute">${when(x.at)} · ${x.direction === 'in' ? 'from' : 'to'} ${e(x.who)} · ${e(x.status)}${x.channel === 'telegram' ? ' · Telegram' : ''}${x.provider === 'mock' ? ' · test, not a real message' : ''}${x.error ? ' · ' + e(x.error) : ''}</span><br>${e(x.body)}</div>`).join('') || '<p class="mute">No messages yet.</p>'}`;
   const call = async (btn, fn, args) => { btn.disabled = true; try { await api(fn, args); await route(); } catch (x) { alert(x.message); btn.disabled = false; } };
   $('#pinset').onclick = (x) => call(x.target, 'sms_set_pin', { pin: $('#pin').value });
+  if ($('#tglink')) $('#tglink').onclick = async (x) => {   // the link is made for the signed-in person only, works once, and expires
+    x.target.disabled = true;
+    try { const r = await api('telegram_link_start'); $('#tgout').innerHTML = `<p><a class="btn primary" href="${e(r.url)}" target="_blank" rel="noopener">Open Telegram and press Start</a></p><p class="mute">This link works once and expires in ${r.minutes} minutes. Do not forward it: whoever opens it becomes you in the chat.</p>`; }
+    catch (err) { alert(err.message); }
+    x.target.disabled = false;
+  };
+  $('#main').querySelectorAll('[data-tg]').forEach((b) => b.onclick = () => call(b, 'telegram_allow', { person_id: +b.dataset.tg, allowed: b.dataset.on === '1' }));
   $('#main').querySelectorAll('[data-enroll]').forEach((b) => b.onclick = () => call(b, 'sms_enroll', { person_id: +b.dataset.enroll, phone: $('#ph' + b.dataset.enroll).value, enrolled: true }));
   $('#main').querySelectorAll('[data-unenroll]').forEach((b) => b.onclick = () => call(b, 'sms_enroll', { person_id: +b.dataset.unenroll, enrolled: false }));
 }
